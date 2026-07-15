@@ -1,0 +1,31 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+
+[*.{cs,csx}]
+indent_size = 4
+dotnet_sort_system_directives_first = true
+csharp_style_namespace_declarations = file_scoped:warning
+csharp_using_directive_placement = outside_namespace:warning
+dotnet_style_qualification_for_field = false:warning
+dotnet_style_require_accessibility_modifiers = always:warning
+csharp_prefer_braces = true:warning
+csharp_style_var_when_type_is_apparent = true:suggestion
+dotnet_diagnostic.CA2007.severity = none
+dotnet_diagnostic.CA1707.severity = none
+# A Cybrid Bank API chama o identificador primário de todo recurso literalmente de "guid" —
+# os DTOs espelham o payload real (regra do goal-loop), então a propriedade se chama Guid.
+dotnet_diagnostic.CA1720.severity = none
+dotnet_diagnostic.CS8618.severity = error
+dotnet_diagnostic.CS8602.severity = error
+
+[*.{csproj,props,targets,xml}]
+indent_size = 2
+
+[*.{json,yml,yaml}]
+indent_size = 2

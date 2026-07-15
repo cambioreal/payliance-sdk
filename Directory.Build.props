@@ -1,0 +1,31 @@
+<Project>
+
+  <!-- Convenções espelhadas de cambioreal/kira-sdk, ripple-sdk e bs2-sdk: net10.0 puro, SDK
+       fixada em 10.0.301. TargetFramework é central: os .csproj não devem declará-lo. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <Deterministic>true</Deterministic>
+    <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Identidade do pacote">
+    <VersionPrefix>0.1.0</VersionPrefix>
+    <Product>CambioReal Payliance Client</Product>
+    <Company>Hideaki Serviços</Company>
+    <Authors>Hideaki Serviços</Authors>
+    <RepositoryUrl>https://github.com/cambioreal/payliance-sdk</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/cambioreal/payliance-sdk</PackageProjectUrl>
+  </PropertyGroup>
+
+</Project>

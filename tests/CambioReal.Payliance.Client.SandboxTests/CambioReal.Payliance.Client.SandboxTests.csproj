@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>CambioReal.Payliance.SandboxTests</RootNamespace>
+    <AssemblyName>CambioReal.Payliance.Client.SandboxTests</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <!--
+    Deliberadamente FORA de Payliance.slnx: `dotnet build`/`dotnet test Payliance.slnx` nunca toca este
+    projeto, e portanto nenhum pipeline de CI genérico o executa por acidente (goal-loop §2.5:
+    "testes de integração sandbox separados, marcados/opt-in, que nunca rodem por padrão em CI").
+    Rodar explicitamente: ver README.md deste diretório.
+  -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Shouldly" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/CambioReal.Payliance.Client/CambioReal.Payliance.Client.csproj" />
+  </ItemGroup>
+
+</Project>

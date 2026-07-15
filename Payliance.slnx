@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CambioReal.Payliance.Client/CambioReal.Payliance.Client.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CambioReal.Payliance.Client.Tests/CambioReal.Payliance.Client.Tests.csproj" />
+  </Folder>
+</Solution>
