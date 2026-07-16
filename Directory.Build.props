@@ -19,7 +19,7 @@
   </PropertyGroup>
 
   <PropertyGroup Label="Identidade do pacote">
-    <VersionPrefix>0.1.0</VersionPrefix>
+    <VersionPrefix>0.2.0</VersionPrefix>
     <Product>CambioReal Payliance Client</Product>
     <Company>Hideaki Serviços</Company>
     <Authors>Hideaki Serviços</Authors>

@@ -136,6 +136,48 @@ public sealed record PaylianceEcheckPayment(
 public sealed record PaylianceTransactionRecord(IReadOnlyDictionary<string, string> Fields);
 
 /// <summary>
+/// Resultado de <see cref="PaylianceClient.GetTransactionStatusAsync"/>: onde (se) a transação foi
+/// encontrada dentro do intervalo consultado.
+/// </summary>
+public enum PaylianceTransactionStatusKind
+{
+    /// <summary>Não encontrada em settlements nem em returns no intervalo consultado — não é erro:
+    /// pode estar fora do intervalo ou ainda não processada pelo banco.</summary>
+    NotFound = 0,
+
+    /// <summary>Encontrada em <c>query type="settlenoreturn"</c> — liquidada, sem devolução.</summary>
+    Settled = 1,
+
+    /// <summary>Encontrada em <c>query type="return"</c> — devolvida pelo banco (ACH return).</summary>
+    Returned = 2,
+}
+
+/// <summary>
+/// Status de uma transação (<c>AuthorizationId</c>/<c>uniqueTranId</c>), <b>derivado</b> — o
+/// protocolo legado <c>transactions.aspx</c> não tem uma consulta pontual nativa por transação
+/// (confirmado contra o legado <c>cerebro</c>, read-only, 2026-07-16: <c>PaylianceRepository</c>/
+/// <c>PaylianceApiController</c>/<c>PaylianceQuerySettlement</c>/<c>PaylianceQueryReturn</c> só
+/// suportam <c>query type="settle"|"settlenoreturn"|"return"</c> por intervalo de datas — nunca por
+/// ID). Este resultado é obtido filtrando <see cref="PaylianceClient.GetReturnsAsync"/> e
+/// <see cref="PaylianceClient.GetSettlementsAsync"/>(excludeReturns: true) pelo identificador
+/// informado — as duas únicas queries reais do protocolo, não uma operação nova do gateway.
+/// <see cref="ReturnCode"/> é o <c>returnReason</c> cru do XML (código de devolução NACHA, ex.:
+/// <c>R01</c>) — só preenchido quando <see cref="Kind"/> é
+/// <see cref="PaylianceTransactionStatusKind.Returned"/>.
+/// </summary>
+public sealed record PaylianceTransactionStatus(
+    PaylianceTransactionStatusKind Kind,
+    string? AuthorizationId,
+    string? UniqueTranId,
+    string? SettleDate,
+    string? DateReturned,
+    string? ReturnCode,
+    string? ReturnDescription,
+    string? Amount,
+    string? ReturnAmount,
+    IReadOnlyDictionary<string, string>? Fields);
+
+/// <summary>
 /// Cliente do gateway XML da Payliance — endpoint único (<c>transactions.aspx</c>), autenticação
 /// embutida no envelope (<c>&lt;authorization&gt;merchantID/password/locationID</c>), respostas
 /// XML. Erros vêm com HTTP 200 + <c>errorMsg</c>/<c>ValidationMessage</c> no corpo.
@@ -173,6 +215,90 @@ public sealed class PaylianceClient
     {
         var root = await SendAsync(BuildQuery("return", startDate, endDate), cancellationToken);
         return ParseRecords(root.Element("returns") ?? root.Element("settlements"));
+    }
+
+    /// <summary>
+    /// Consulta o status de uma transação (<c>AuthorizationId</c> e/ou <c>uniqueTranId</c>) dentro
+    /// de um intervalo de datas (formato <c>MM/dd/yyyy</c>). <b>Derivado</b> — combina
+    /// <c>query type="return"</c> e <c>query type="settlenoreturn"</c>, as duas únicas consultas
+    /// reais do protocolo legado <c>transactions.aspx</c>; não existe um <c>Retrieve</c> por-ID
+    /// nativo (confirmado contra o legado <c>cerebro</c>, 2026-07-16 — ver
+    /// <see cref="PaylianceTransactionStatus"/>). A API REST atual da Payliance (produto
+    /// diferente, não usado aqui) documenta um <c>Retrieve</c> por-ID; isso não foi confirmado
+    /// contra este protocolo XML. Leitura — não move fundos.
+    /// </summary>
+    /// <param name="startDate">Início do intervalo, <c>MM/dd/yyyy</c>.</param>
+    /// <param name="endDate">Fim do intervalo, <c>MM/dd/yyyy</c>.</param>
+    /// <param name="authorizationId">
+    /// <c>AuthorizationID</c> a localizar. Opcional se <paramref name="uniqueTranId"/> for informado.
+    /// </param>
+    /// <param name="uniqueTranId">
+    /// <c>uniqueTranID</c> a localizar. Opcional se <paramref name="authorizationId"/> for informado.
+    /// </param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <exception cref="ArgumentException">
+    /// Nem <paramref name="authorizationId"/> nem <paramref name="uniqueTranId"/> foram informados.
+    /// </exception>
+    public async Task<PaylianceTransactionStatus> GetTransactionStatusAsync(
+        string startDate,
+        string endDate,
+        string? authorizationId = null,
+        string? uniqueTranId = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(authorizationId) && string.IsNullOrWhiteSpace(uniqueTranId))
+        {
+            throw new ArgumentException(
+                "Informe authorizationId e/ou uniqueTranId para consultar o status.", nameof(authorizationId));
+        }
+
+        // returns primeiro: uma transação devolvida some do "settlenoreturn" (por definição), então
+        // não há colisão de ordem — mas devolvida é o status mais acionável, priorizamos.
+        var returns = await GetReturnsAsync(startDate, endDate, cancellationToken);
+        var returned = FindMatch(returns, authorizationId, uniqueTranId);
+        if (returned is not null)
+        {
+            return new PaylianceTransactionStatus(
+                PaylianceTransactionStatusKind.Returned,
+                AuthorizationId: GetField(returned, "AuthorizationID"),
+                UniqueTranId: GetField(returned, "uniqueTranID"),
+                SettleDate: null,
+                DateReturned: GetField(returned, "dateReturned"),
+                ReturnCode: GetField(returned, "returnReason"),
+                ReturnDescription: GetField(returned, "addenda"),
+                Amount: GetField(returned, "amount"),
+                ReturnAmount: GetField(returned, "returnAmount"),
+                Fields: returned.Fields);
+        }
+
+        var settlements = await GetSettlementsAsync(startDate, endDate, excludeReturns: true, cancellationToken);
+        var settled = FindMatch(settlements, authorizationId, uniqueTranId);
+        if (settled is not null)
+        {
+            return new PaylianceTransactionStatus(
+                PaylianceTransactionStatusKind.Settled,
+                AuthorizationId: GetField(settled, "AuthorizationID"),
+                UniqueTranId: GetField(settled, "uniqueTranID"),
+                SettleDate: GetField(settled, "settleDate"),
+                DateReturned: null,
+                ReturnCode: null,
+                ReturnDescription: null,
+                Amount: GetField(settled, "amount"),
+                ReturnAmount: GetField(settled, "returnAmount"),
+                Fields: settled.Fields);
+        }
+
+        return new PaylianceTransactionStatus(
+            PaylianceTransactionStatusKind.NotFound,
+            AuthorizationId: authorizationId,
+            UniqueTranId: uniqueTranId,
+            SettleDate: null,
+            DateReturned: null,
+            ReturnCode: null,
+            ReturnDescription: null,
+            Amount: null,
+            ReturnAmount: null,
+            Fields: null);
     }
 
     /// <summary>
@@ -304,6 +430,17 @@ public sealed class PaylianceClient
         return [.. container.Elements().Select(record => new PaylianceTransactionRecord(
             record.Elements().ToDictionary(e => e.Name.LocalName, e => e.Value)))];
     }
+
+    private static PaylianceTransactionRecord? FindMatch(
+        IReadOnlyList<PaylianceTransactionRecord> records, string? authorizationId, string? uniqueTranId) =>
+        records.FirstOrDefault(record =>
+            (!string.IsNullOrWhiteSpace(authorizationId)
+                && string.Equals(GetField(record, "AuthorizationID"), authorizationId, StringComparison.OrdinalIgnoreCase))
+            || (!string.IsNullOrWhiteSpace(uniqueTranId)
+                && string.Equals(GetField(record, "uniqueTranID"), uniqueTranId, StringComparison.OrdinalIgnoreCase)));
+
+    private static string? GetField(PaylianceTransactionRecord record, string name) =>
+        record.Fields.TryGetValue(name, out var value) ? value : null;
 }
 
 /// <summary>Helper interno para anexar InnerException mantendo o record de contexto.</summary>
