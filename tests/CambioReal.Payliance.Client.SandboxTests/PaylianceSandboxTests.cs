@@ -45,6 +45,25 @@ public sealed class PaylianceSandboxTests
         output.WriteLine($"query return: 200, {records.Count} return(s) no intervalo.");
     }
 
+    /// <summary>
+    /// GetTransactionStatusAsync é derivado (return + settlenoreturn) — sem um AuthorizationID real
+    /// para exercitar (nenhum FINANCIAL-WRITE foi feito neste loop, goal §0.5), este teste só prova
+    /// que as duas queries reais compõem sem erro e resolvem para NotFound com um ID inexistente.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Sandbox")]
+    public async Task TransactionStatusComposesBothQueriesLiveAndResolvesNotFound()
+    {
+        using var provider = BuildServiceProvider();
+        var client = provider.GetRequiredService<PaylianceClient>();
+
+        var status = await client.GetTransactionStatusAsync(
+            "07/14/2026", "07/15/2026", authorizationId: "sandbox-probe-does-not-exist");
+
+        status.Kind.ShouldBe(PaylianceTransactionStatusKind.NotFound);
+        output.WriteLine("query return + settlenoreturn: 200, ambos sem erro, ID inexistente resolveu NotFound.");
+    }
+
     private static ServiceProvider BuildServiceProvider()
     {
         string Req(string name) =>
