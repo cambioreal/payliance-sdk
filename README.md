@@ -17,3 +17,20 @@ sandbox verdes. Payment/refund/void = **financial-write**, nunca executados (goa
 
 Secrets: `pass cambio-real-v2/providers/payliance/staging-env`. Discovery:
 `docs/providers/payliance/discovery.md`.
+
+## Instalação e uso
+
+Pacote no GitHub Packages da org `cambioreal` (feed configurado no `NuGet.config` do repo consumidor):
+
+```bash
+dotnet add package CambioReal.Payliance.Client
+```
+
+```csharp
+// Registro via DI — credenciais vêm de config segura (env/Secret/pass), nunca versionadas.
+builder.Services.AddPaylianceClient(builder.Configuration.GetSection(PaylianceOptions.SectionName));
+
+// ...injete CambioReal.Payliance.PaylianceClient onde precisar.
+```
+
+Também há a sobrecarga `AddPaylianceClient(Action<PaylianceOptions>)` para configuração inline.
