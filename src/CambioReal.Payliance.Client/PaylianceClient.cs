@@ -470,10 +470,18 @@ public static class PaylianceServiceCollectionExtensions
         services.AddOptions<PaylianceOptions>().Validate(
             options =>
             {
-                options.Validate();
-                return true;
+                try
+                {
+                    options.Validate();
+                    return true;
+                }
+                catch (InvalidOperationException)
+                {
+                    return false;
+                }
             },
-            "A configuração do PaylianceOptions é inválida.");
+            "A configuração do PaylianceOptions é inválida.")
+            .ValidateOnStart();
 
         services.AddHttpClient("payliance.api", (provider, client) =>
         {
