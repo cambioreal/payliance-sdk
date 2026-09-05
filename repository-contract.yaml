@@ -1,0 +1,7 @@
+schema_version: repository-contract/v1
+repository_id: 6702db55-7d77-4b4d-8ce0-9242ce7a2d74
+identity:
+  remotes:
+  - github.com/cambioreal/payliance-sdk
+capabilities:
+  manifest: null
